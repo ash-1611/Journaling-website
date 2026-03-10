@@ -1,0 +1,185 @@
+.mood-tracker-page {
+  min-height: 100vh;
+  padding-top: 100px;
+  padding-bottom: 2rem;
+}
+
+@media (min-width: 769px) {
+  .mood-tracker-page.page-with-sidebar {
+    margin-left: 280px;
+  }
+}
+
+.mood-tracker-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.mood-tracker-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.mood-tracker-header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.mood-tracker-header p {
+  font-size: 1.1rem;
+}
+
+.period-selector {
+  display: flex;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 3rem;
+  flex-wrap: wrap;
+}
+
+.period-button {
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 50px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Poppins', sans-serif;
+  border: none;
+}
+
+.chart-section {
+  padding: 2.5rem;
+  border-radius: 25px;
+  margin-bottom: 3rem;
+}
+
+.chart-section h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.chart-container {
+  height: 300px;
+  margin-top: 1rem;
+}
+
+.mood-cards-section {
+  margin-bottom: 3rem;
+}
+
+.mood-cards-section h2 {
+  font-size: 1.8rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.mood-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.5rem;
+  margin-top: 2rem;
+}
+
+.mood-card {
+  padding: 2rem;
+  border-radius: 20px;
+  text-align: center;
+  transition: all 0.3s ease;
+}
+
+.mood-card-emoji {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+}
+
+.mood-card h3 {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.mood-value-container {
+  width: 100%;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 0.5rem;
+}
+
+.mood-value-bar {
+  height: 100%;
+  border-radius: 10px;
+  transition: width 0.5s ease;
+}
+
+.mood-value-text {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.insights-section {
+  padding: 2.5rem;
+  border-radius: 25px;
+}
+
+.insights-section h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.insights-section p {
+  font-size: 1rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+  .mood-tracker-container {
+    padding: 1rem;
+  }
+
+  .mood-tracker-header h1 {
+    font-size: 2rem;
+  }
+
+  .period-selector {
+    gap: 0.5rem;
+  }
+
+  .period-button {
+    padding: 0.6rem 1.5rem;
+    font-size: 0.9rem;
+  }
+
+  .chart-section,
+  .insights-section {
+    padding: 1.5rem;
+  }
+
+  .chart-container {
+    height: 250px;
+  }
+
+  .mood-cards-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1rem;
+  }
+
+  .mood-card {
+    padding: 1.5rem;
+  }
+
+  .mood-card-emoji {
+    font-size: 2.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .mood-cards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+

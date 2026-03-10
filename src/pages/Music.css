@@ -1,0 +1,132 @@
+.music-page {
+  min-height: 100vh;
+  padding-top: 100px;
+  padding-bottom: 2rem;
+}
+
+@media (min-width: 769px) {
+  .music-page.page-with-sidebar {
+    margin-left: 280px;
+  }
+}
+
+.music-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
+}
+
+.music-header {
+  text-align: center;
+  margin-bottom: 3rem;
+}
+
+.music-header h1 {
+  font-size: 2.5rem;
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+}
+
+.music-header p {
+  font-size: 1.1rem;
+}
+
+.music-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 2rem;
+}
+
+.music-card {
+  border-radius: 24px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.music-image-wrapper {
+  width: 100%;
+}
+
+.music-image {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  border-radius: 20px;
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.music-wave {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 4px;
+  height: 30px;
+  align-items: flex-end;
+}
+
+.wave-bar {
+  width: 4px;
+  border-radius: 999px;
+  background: #fff;
+}
+
+.music-content h2 {
+  font-size: 1.4rem;
+  margin-bottom: 0.35rem;
+}
+
+.music-content p {
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 1rem;
+}
+
+.music-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.7);
+  font-size: 0.8rem;
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.music-play-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1.4rem;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+}
+
+.music-play-button .play-icon {
+  font-size: 1.1rem;
+}
+
+@media (max-width: 768px) {
+  .music-container {
+    padding: 1rem;
+  }
+
+  .music-header h1 {
+    font-size: 2rem;
+  }
+}
+
+

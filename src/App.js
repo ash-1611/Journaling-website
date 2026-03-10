@@ -1,24 +1,34 @@
-import logo from './logo.svg';
-import './App.css';
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "./context/ThemeContext";
+import Landing from "./pages/Landing";
+import Journal from "./pages/Journal";
+import MoodTracker from "./pages/MoodTracker";
+import Themes from "./pages/Themes";
+import Auth from "./pages/Auth";
+import Music from "./pages/Music";
+import Yoga from "./pages/Yoga";
+import Exercise from "./pages/Exercise";
+import Dashboard from "./pages/Dashboard";
+import Settings from "./pages/Settings";
 
 function App() {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/journal" element={<Journal />} />
+          <Route path="/mood-tracker" element={<MoodTracker />} />
+          <Route path="/music" element={<Music />} />
+          <Route path="/yoga" element={<Yoga />} />
+          <Route path="/exercise" element={<Exercise />} />
+          <Route path="/themes" element={<Themes />} />
+          <Route path="/settings" element={<Settings />} />
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 
