@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useTheme } from "../context/ThemeContext";
 import "./Sidebar.css";
@@ -11,14 +11,20 @@ const navItems = [
   { path: "/yoga", label: "Yoga", icon: "🧘" },
   { path: "/exercise", label: "Exercises", icon: "💪" },
   { path: "/mood-tracker", label: "Mood Tracker", icon: "📈" },
+  { path: "/ai-chat", label: "Mindi AI", icon: "🤖" },
+  { path: "/ai-analytics", label: "AI Analytics", icon: "🧠" },
   { path: "/settings", label: "Settings", icon: "⚙️" },
 ];
 
 export default function Sidebar() {
   const { theme } = useTheme();
   const location = useLocation();
+  const navigate = useNavigate();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(window.innerWidth > 768);
+
+  const storedName = localStorage.getItem('userName') || localStorage.getItem('userEmail') || 'U';
+  const userInitial = storedName.trim().charAt(0).toUpperCase();
 
   useEffect(() => {
     const handleResize = () => {
@@ -94,10 +100,12 @@ export default function Sidebar() {
                   className="sidebar-avatar"
                   whileHover={{ scale: 1.06, y: -1 }}
                   whileTap={{ scale: 0.96 }}
+                  onClick={() => navigate('/settings')}
+                  style={{ cursor: 'pointer' }}
                 >
                   <div className="sidebar-avatar-circle">
-                    <span className="sidebar-avatar-icon">😊</span>
-                    <span className="sidebar-avatar-tooltip">Profile</span>
+                    <span className="sidebar-avatar-icon">{userInitial}</span>
+                    <span className="sidebar-avatar-tooltip">Settings</span>
                   </div>
                 </motion.div>
               </div>

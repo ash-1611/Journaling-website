@@ -2,80 +2,51 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
 import './Auth.css';
 import axios from 'axios';
+
+const FEATURES = [
+  { icon: '📝', label: 'Smart Journal',    desc: 'Write & decorate with stickers' },
+  { icon: '📊', label: 'Mood Tracker',     desc: 'Visualise your emotional patterns' },
+  { icon: '🎵', label: 'Curated Music',    desc: 'Playlists for every state of mind' },
+  { icon: '🧘', label: 'Yoga & Exercise',  desc: 'Guided sessions with timers' },
+];
 
 export default function Auth() {
   const { theme } = useTheme();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('login');
+  const [activeTab,    setActiveTab]    = useState('login');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [showSuccess,  setShowSuccess]  = useState(false);
 
   const API_BASE_URL = 'http://localhost:5001';
 
-  // Login form state
-  const [loginForm, setLoginForm] = useState({
-    email: '',
-    password: '',
-  });
+  const [loginForm,   setLoginForm]   = useState({ email: '', password: '' });
   const [loginErrors, setLoginErrors] = useState({});
 
-  // Sign up form state
-  const [signupForm, setSignupForm] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-  });
+  const [signupForm,   setSignupForm]   = useState({ fullName: '', email: '', password: '', confirmPassword: '' });
   const [signupErrors, setSignupErrors] = useState({});
 
-  // Validation functions
-  const validateEmail = (email) => {
-    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return re.test(email);
-  };
+  const validateEmail = (email) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 
   const validateLogin = () => {
     const errors = {};
-    if (!loginForm.email) {
-      errors.email = 'Email is required';
-    } else if (!validateEmail(loginForm.email)) {
-      errors.email = 'Please enter a valid email';
-    }
-    if (!loginForm.password) {
-      errors.password = 'Password is required';
-    } else if (loginForm.password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
-    }
+    if (!loginForm.email)                     errors.email    = 'Email is required';
+    else if (!validateEmail(loginForm.email)) errors.email    = 'Please enter a valid email';
+    if (!loginForm.password)                  errors.password = 'Password is required';
+    else if (loginForm.password.length < 6)   errors.password = 'Password must be at least 6 characters';
     setLoginErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const validateSignup = () => {
     const errors = {};
-    if (!signupForm.fullName.trim()) {
-      errors.fullName = 'Full name is required';
-    } else if (signupForm.fullName.trim().length < 2) {
-      errors.fullName = 'Name must be at least 2 characters';
-    }
-    if (!signupForm.email) {
-      errors.email = 'Email is required';
-    } else if (!validateEmail(signupForm.email)) {
-      errors.email = 'Please enter a valid email';
-    }
-    if (!signupForm.password) {
-      errors.password = 'Password is required';
-    } else if (signupForm.password.length < 6) {
-      errors.password = 'Password must be at least 6 characters';
-    }
-    if (!signupForm.confirmPassword) {
-      errors.confirmPassword = 'Please confirm your password';
-    } else if (signupForm.password !== signupForm.confirmPassword) {
-      errors.confirmPassword = 'Passwords do not match';
-    }
+    if (!signupForm.fullName.trim())                      errors.fullName        = 'Full name is required';
+    if (!signupForm.email)                                errors.email           = 'Email is required';
+    else if (!validateEmail(signupForm.email))            errors.email           = 'Please enter a valid email';
+    if (!signupForm.password)                             errors.password        = 'Password is required';
+    else if (signupForm.password.length < 6)              errors.password        = 'Password must be at least 6 characters';
+    if (signupForm.password !== signupForm.confirmPassword) errors.confirmPassword = 'Passwords do not match';
     setSignupErrors(errors);
     return Object.keys(errors).length === 0;
   };
@@ -83,456 +54,333 @@ export default function Auth() {
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!validateLogin()) return;
-
     setIsSubmitting(true);
     try {
       const res = await axios.post(`${API_BASE_URL}/api/auth/login`, {
-        email: loginForm.email,
-        password: loginForm.password,
+        email: loginForm.email, password: loginForm.password,
       });
       localStorage.setItem('isAuthenticated', 'true');
       localStorage.setItem('userEmail', res.data.email);
-      localStorage.setItem('userName', res.data.name);
-      localStorage.setItem('token', res.data.token);
-      setIsSubmitting(false);
-      navigate('/journal');
-    } catch (err) {
-      setIsSubmitting(false);
-      setLoginErrors({ general: 'Login failed. Please check your credentials.' });
+      localStorage.setItem('userName',  res.data.name);
+      localStorage.setItem('token',     res.data.token);
+      if (res.data._id) localStorage.setItem('userId', res.data._id);
+      navigate('/dashboard');
+    } catch {
+      setLoginErrors({ general: 'Invalid email or password. Please try again.' });
     }
+    setIsSubmitting(false);
   };
 
   const handleSignup = async (e) => {
     e.preventDefault();
     if (!validateSignup()) return;
-
     setIsSubmitting(true);
     try {
       const res = await axios.post(`${API_BASE_URL}/api/auth/register`, {
-        name: signupForm.fullName,
-        email: signupForm.email,
-        password: signupForm.password,
+        name: signupForm.fullName, email: signupForm.email, password: signupForm.password,
       });
       localStorage.setItem('isAuthenticated', 'true');
       localStorage.setItem('userEmail', res.data.email);
-      localStorage.setItem('userName', res.data.name);
-      localStorage.setItem('token', res.data.token);
-      setIsSubmitting(false);
+      localStorage.setItem('userName',  res.data.name);
+      localStorage.setItem('token',     res.data.token);
+      if (res.data._id) localStorage.setItem('userId', res.data._id);
       setShowSuccess(true);
-      setTimeout(() => {
-        navigate('/journal');
-      }, 2000);
-    } catch (err) {
-      setIsSubmitting(false);
-      setSignupErrors({ general: 'Signup failed. Please try again.' });
+      setTimeout(() => navigate('/dashboard'), 2000);
+    } catch {
+      setSignupErrors({ general: 'Signup failed. That email may already be in use.' });
     }
+    setIsSubmitting(false);
   };
 
-  const handleInputChange = (formType, field, value) => {
+  const handleChange = (formType, field, value) => {
     if (formType === 'login') {
-      setLoginForm({ ...loginForm, [field]: value });
-      // Clear error when user starts typing
-      if (loginErrors[field]) {
-        setLoginErrors({ ...loginErrors, [field]: '' });
-      }
+      setLoginForm(f => ({ ...f, [field]: value }));
+      if (loginErrors[field])  setLoginErrors(e => ({ ...e, [field]: '' }));
     } else {
-      setSignupForm({ ...signupForm, [field]: value });
-      // Clear error when user starts typing
-      if (signupErrors[field]) {
-        setSignupErrors({ ...signupErrors, [field]: '' });
-      }
+      setSignupForm(f => ({ ...f, [field]: value }));
+      if (signupErrors[field]) setSignupErrors(e => ({ ...e, [field]: '' }));
     }
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1,
-      },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: {
-        duration: 0.5,
-        ease: 'easeOut',
-      },
-    },
-  };
+  const inputStyle = (err) => ({
+    background:   `${theme.colors.primary}0a`,
+    color:        theme.colors.text,
+    border:       `2px solid ${err ? '#FF6B6B' : theme.colors.primary + '35'}`,
+  });
 
   return (
-    <div className="auth-page">
-      <Navbar />
-      
-      <motion.div
-        className="auth-container"
-        variants={containerVariants}
-        initial="hidden"
-        animate="visible"
-      >
+    <div className="auth-page" style={{ background: theme.colors.background }}>
+      <div className="auth-split">
+
+        {/* ── Left panel (branding + feature list) ── */}
         <motion.div
-          className="auth-card glass"
-          variants={itemVariants}
-          style={{
-            background: theme.colors.surface,
-            boxShadow: `0 8px 32px ${theme.colors.shadow}`,
-          }}
+          className="auth-left"
+          style={{ background: `linear-gradient(145deg, ${theme.colors.primary}, ${theme.colors.accent})` }}
+          initial={{ opacity: 0, x: -60 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.7, ease: 'easeOut' }}
         >
-          {/* Tab Switcher */}
-          <div className="auth-tabs">
-            <motion.button
-              className={`tab-button ${activeTab === 'login' ? 'active' : ''}`}
-              onClick={() => setActiveTab('login')}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              style={{
-                color: activeTab === 'login' ? theme.colors.primary : theme.colors.textLight,
-                borderBottom: activeTab === 'login' ? `3px solid ${theme.colors.primary}` : '3px solid transparent',
-              }}
-            >
-              Login
-            </motion.button>
-            <motion.button
-              className={`tab-button ${activeTab === 'signup' ? 'active' : ''}`}
-              onClick={() => setActiveTab('signup')}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              style={{
-                color: activeTab === 'signup' ? theme.colors.primary : theme.colors.textLight,
-                borderBottom: activeTab === 'signup' ? `3px solid ${theme.colors.primary}` : '3px solid transparent',
-              }}
-            >
-              Sign Up
-            </motion.button>
-          </div>
+          {/* Floating blobs */}
+          <div className="auth-blob auth-blob-1" />
+          <div className="auth-blob auth-blob-2" />
 
-          {/* Forms */}
-          <AnimatePresence mode="wait">
-            {activeTab === 'login' ? (
-              <motion.form
-                key="login"
-                className="auth-form"
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: 20 }}
-                transition={{ duration: 0.3 }}
-                onSubmit={handleLogin}
-              >
-                <div className="form-group">
-                  <label style={{ color: theme.colors.text, fontWeight: 500 }}>
-                    Email Address
-                  </label>
-                  <motion.input
-                    type="email"
-                    placeholder="you@example.com"
-                    value={loginForm.email}
-                    onChange={(e) => handleInputChange('login', 'email', e.target.value)}
-                    className={`form-input ${loginErrors.email ? 'error' : ''}`}
-                    style={{
-                      background: theme.colors.surface,
-                      color: theme.colors.text,
-                      border: `2px solid ${loginErrors.email ? '#FF6B6B' : theme.colors.primary + '30'}`,
-                    }}
-                    whileFocus={{
-                      borderColor: loginErrors.email ? '#FF6B6B' : theme.colors.primary,
-                      boxShadow: `0 0 0 3px ${loginErrors.email ? '#FF6B6B20' : theme.colors.primary + '20'}`,
-                    }}
-                  />
-                  <AnimatePresence>
-                    {loginErrors.email && (
-                      <motion.span
-                        className="error-message"
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                      >
-                        {loginErrors.email}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </div>
+          <div className="auth-left-content">
+            <Link to="/" className="auth-brand">
+              <span className="auth-brand-icon">🌿</span>
+              <span className="auth-brand-name">Mindful</span>
+            </Link>
 
-                <div className="form-group">
-                  <div className="form-label-row">
-                    <label style={{ color: theme.colors.text, fontWeight: 500 }}>
-                      Password
-                    </label>
-                    <Link
-                      to="/forgot-password"
-                      className="forgot-link"
-                      style={{ color: theme.colors.primary }}
-                    >
-                      Forgot password?
-                    </Link>
+            <motion.h2
+              className="auth-left-headline"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              Your complete mental wellness companion
+            </motion.h2>
+
+            <div className="auth-features-list">
+              {FEATURES.map((f, i) => (
+                <motion.div
+                  key={f.label}
+                  className="auth-feature-item"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.4 + i * 0.1 }}
+                >
+                  <span className="auth-feature-icon">{f.icon}</span>
+                  <div>
+                    <span className="auth-feature-label">{f.label}</span>
+                    <span className="auth-feature-desc">{f.desc}</span>
                   </div>
-                  <motion.input
-                    type="password"
-                    placeholder="Enter your password"
-                    value={loginForm.password}
-                    onChange={(e) => handleInputChange('login', 'password', e.target.value)}
-                    className={`form-input ${loginErrors.password ? 'error' : ''}`}
-                    style={{
-                      background: theme.colors.surface,
-                      color: theme.colors.text,
-                      border: `2px solid ${loginErrors.password ? '#FF6B6B' : theme.colors.primary + '30'}`,
-                    }}
-                    whileFocus={{
-                      borderColor: loginErrors.password ? '#FF6B6B' : theme.colors.primary,
-                      boxShadow: `0 0 0 3px ${loginErrors.password ? '#FF6B6B20' : theme.colors.primary + '20'}`,
-                    }}
-                  />
-                  <AnimatePresence>
-                    {loginErrors.password && (
-                      <motion.span
-                        className="error-message"
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                      >
-                        {loginErrors.password}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </div>
+                </motion.div>
+              ))}
+            </div>
 
-                <motion.button
-                  type="submit"
-                  className="auth-button"
-                  disabled={isSubmitting}
-                  whileHover={!isSubmitting ? { scale: 1.02, y: -2 } : {}}
-                  whileTap={!isSubmitting ? { scale: 0.98 } : {}}
-                  style={{
-                    background: isSubmitting
-                      ? theme.colors.textLight + '40'
-                      : `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent})`,
-                    color: 'white',
-                    boxShadow: !isSubmitting ? `0 10px 30px ${theme.colors.shadow}` : 'none',
-                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {isSubmitting ? (
-                    <motion.span
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                    >
-                      Logging in...
-                    </motion.span>
-                  ) : (
-                    'Login'
-                  )}
-                </motion.button>
-              </motion.form>
-            ) : (
-              <motion.form
-                key="signup"
-                className="auth-form"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.3 }}
-                onSubmit={handleSignup}
-              >
-                <div className="form-group">
-                  <label style={{ color: theme.colors.text, fontWeight: 500 }}>
-                    Full Name
-                  </label>
-                  <motion.input
-                    type="text"
-                    placeholder="John Doe"
-                    value={signupForm.fullName}
-                    onChange={(e) => handleInputChange('signup', 'fullName', e.target.value)}
-                    className={`form-input ${signupErrors.fullName ? 'error' : ''}`}
-                    style={{
-                      background: theme.colors.surface,
-                      color: theme.colors.text,
-                      border: `2px solid ${signupErrors.fullName ? '#FF6B6B' : theme.colors.primary + '30'}`,
-                    }}
-                    whileFocus={{
-                      borderColor: signupErrors.fullName ? '#FF6B6B' : theme.colors.primary,
-                      boxShadow: `0 0 0 3px ${signupErrors.fullName ? '#FF6B6B20' : theme.colors.primary + '20'}`,
-                    }}
-                  />
-                  <AnimatePresence>
-                    {signupErrors.fullName && (
-                      <motion.span
-                        className="error-message"
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                      >
-                        {signupErrors.fullName}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                <div className="form-group">
-                  <label style={{ color: theme.colors.text, fontWeight: 500 }}>
-                    Email Address
-                  </label>
-                  <motion.input
-                    type="email"
-                    placeholder="you@example.com"
-                    value={signupForm.email}
-                    onChange={(e) => handleInputChange('signup', 'email', e.target.value)}
-                    className={`form-input ${signupErrors.email ? 'error' : ''}`}
-                    style={{
-                      background: theme.colors.surface,
-                      color: theme.colors.text,
-                      border: `2px solid ${signupErrors.email ? '#FF6B6B' : theme.colors.primary + '30'}`,
-                    }}
-                    whileFocus={{
-                      borderColor: signupErrors.email ? '#FF6B6B' : theme.colors.primary,
-                      boxShadow: `0 0 0 3px ${signupErrors.email ? '#FF6B6B20' : theme.colors.primary + '20'}`,
-                    }}
-                  />
-                  <AnimatePresence>
-                    {signupErrors.email && (
-                      <motion.span
-                        className="error-message"
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                      >
-                        {signupErrors.email}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                <div className="form-group">
-                  <label style={{ color: theme.colors.text, fontWeight: 500 }}>
-                    Password
-                  </label>
-                  <motion.input
-                    type="password"
-                    placeholder="Create a password"
-                    value={signupForm.password}
-                    onChange={(e) => handleInputChange('signup', 'password', e.target.value)}
-                    className={`form-input ${signupErrors.password ? 'error' : ''}`}
-                    style={{
-                      background: theme.colors.surface,
-                      color: theme.colors.text,
-                      border: `2px solid ${signupErrors.password ? '#FF6B6B' : theme.colors.primary + '30'}`,
-                    }}
-                    whileFocus={{
-                      borderColor: signupErrors.password ? '#FF6B6B' : theme.colors.primary,
-                      boxShadow: `0 0 0 3px ${signupErrors.password ? '#FF6B6B20' : theme.colors.primary + '20'}`,
-                    }}
-                  />
-                  <AnimatePresence>
-                    {signupErrors.password && (
-                      <motion.span
-                        className="error-message"
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                      >
-                        {signupErrors.password}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                <div className="form-group">
-                  <label style={{ color: theme.colors.text, fontWeight: 500 }}>
-                    Confirm Password
-                  </label>
-                  <motion.input
-                    type="password"
-                    placeholder="Confirm your password"
-                    value={signupForm.confirmPassword}
-                    onChange={(e) => handleInputChange('signup', 'confirmPassword', e.target.value)}
-                    className={`form-input ${signupErrors.confirmPassword ? 'error' : ''}`}
-                    style={{
-                      background: theme.colors.surface,
-                      color: theme.colors.text,
-                      border: `2px solid ${signupErrors.confirmPassword ? '#FF6B6B' : theme.colors.primary + '30'}`,
-                    }}
-                    whileFocus={{
-                      borderColor: signupErrors.confirmPassword ? '#FF6B6B' : theme.colors.primary,
-                      boxShadow: `0 0 0 3px ${signupErrors.confirmPassword ? '#FF6B6B20' : theme.colors.primary + '20'}`,
-                    }}
-                  />
-                  <AnimatePresence>
-                    {signupErrors.confirmPassword && (
-                      <motion.span
-                        className="error-message"
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -10 }}
-                      >
-                        {signupErrors.confirmPassword}
-                      </motion.span>
-                    )}
-                  </AnimatePresence>
-                </div>
-
-                <motion.button
-                  type="submit"
-                  className="auth-button"
-                  disabled={isSubmitting}
-                  whileHover={!isSubmitting ? { scale: 1.02, y: -2 } : {}}
-                  whileTap={!isSubmitting ? { scale: 0.98 } : {}}
-                  style={{
-                    background: isSubmitting
-                      ? theme.colors.textLight + '40'
-                      : `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent})`,
-                    color: 'white',
-                    boxShadow: !isSubmitting ? `0 10px 30px ${theme.colors.shadow}` : 'none',
-                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {isSubmitting ? (
-                    <motion.span
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                    >
-                      Creating account...
-                    </motion.span>
-                  ) : (
-                    'Sign Up'
-                  )}
-                </motion.button>
-              </motion.form>
-            )}
-          </AnimatePresence>
-
-          {/* Success Message */}
-          <AnimatePresence>
-            {showSuccess && (
-              <motion.div
-                className="success-message"
-                initial={{ opacity: 0, scale: 0.8, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.8, y: -20 }}
-                style={{
-                  background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent})`,
-                  color: 'white',
-                }}
-              >
-                <motion.span
-                  className="success-icon"
-                  initial={{ scale: 0, rotate: -180 }}
-                  animate={{ scale: 1, rotate: 0 }}
-                  transition={{ type: 'spring', stiffness: 500 }}
-                >
-                  ✓
-                </motion.span>
-                Account created successfully! Redirecting...
-              </motion.div>
-            )}
-          </AnimatePresence>
+            <motion.p
+              className="auth-left-quote"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.9 }}
+            >
+              "Taking care of your mental health is an act of self-love."
+            </motion.p>
+          </div>
         </motion.div>
-      </motion.div>
 
-      <Footer />
+        {/* ── Right panel (form) ── */}
+        <motion.div
+          className="auth-right"
+          initial={{ opacity: 0, x: 60 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.7, ease: 'easeOut' }}
+        >
+          <div className="auth-card glass" style={{ background: theme.colors.surface, boxShadow: `0 20px 60px ${theme.colors.shadow}` }}>
+
+            {/* Tabs */}
+            <div className="auth-tabs">
+              {['login', 'signup'].map(tab => (
+                <motion.button
+                  key={tab}
+                  className={`tab-button ${activeTab === tab ? 'active' : ''}`}
+                  onClick={() => setActiveTab(tab)}
+                  whileHover={{ scale: 1.04 }} whileTap={{ scale: 0.96 }}
+                  style={{
+                    color:       activeTab === tab ? theme.colors.primary : theme.colors.textLight,
+                    borderBottom:`3px solid ${activeTab === tab ? theme.colors.primary : 'transparent'}`,
+                  }}
+                >
+                  {tab === 'login' ? 'Login' : 'Sign Up'}
+                </motion.button>
+              ))}
+            </div>
+
+            <AnimatePresence mode="wait">
+              {/* ── LOGIN FORM ── */}
+              {activeTab === 'login' && (
+                <motion.form
+                  key="login"
+                  className="auth-form"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  transition={{ duration: 0.28 }}
+                  onSubmit={handleLogin}
+                >
+                  <div className="auth-form-header">
+                    <h2 style={{ color: theme.colors.text }}>Welcome back 👋</h2>
+                    <p style={{ color: theme.colors.textLight }}>Sign in to continue your wellness journey.</p>
+                  </div>
+
+                  {loginErrors.general && (
+                    <div className="auth-error-banner">{loginErrors.general}</div>
+                  )}
+
+                  <div className="form-group">
+                    <label style={{ color: theme.colors.textLight }}>Email Address</label>
+                    <input
+                      type="email" placeholder="you@example.com"
+                      value={loginForm.email}
+                      onChange={e => handleChange('login', 'email', e.target.value)}
+                      className={`form-input ${loginErrors.email ? 'error' : ''}`}
+                      style={inputStyle(loginErrors.email)}
+                    />
+                    {loginErrors.email && <span className="error-message">{loginErrors.email}</span>}
+                  </div>
+
+                  <div className="form-group">
+                    <div className="form-label-row">
+                      <label style={{ color: theme.colors.textLight }}>Password</label>
+                    </div>
+                    <input
+                      type="password" placeholder="Enter your password"
+                      value={loginForm.password}
+                      onChange={e => handleChange('login', 'password', e.target.value)}
+                      className={`form-input ${loginErrors.password ? 'error' : ''}`}
+                      style={inputStyle(loginErrors.password)}
+                    />
+                    {loginErrors.password && <span className="error-message">{loginErrors.password}</span>}
+                  </div>
+
+                  <motion.button
+                    type="submit" className="auth-button"
+                    disabled={isSubmitting}
+                    whileHover={!isSubmitting ? { scale: 1.02, y: -2 } : {}}
+                    whileTap={!isSubmitting ? { scale: 0.98 } : {}}
+                    style={{
+                      background: isSubmitting ? `${theme.colors.primary}60` : `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent})`,
+                      boxShadow: !isSubmitting ? `0 10px 30px ${theme.colors.primary}40` : 'none',
+                    }}
+                  >
+                    {isSubmitting ? '⏳ Logging in…' : '🚀 Login'}
+                  </motion.button>
+
+                  <p className="auth-switch-text" style={{ color: theme.colors.textLight }}>
+                    Don't have an account?{' '}
+                    <button type="button" className="auth-switch-btn" style={{ color: theme.colors.primary }} onClick={() => setActiveTab('signup')}>
+                      Sign up free
+                    </button>
+                  </p>
+                </motion.form>
+              )}
+
+              {/* ── SIGNUP FORM ── */}
+              {activeTab === 'signup' && (
+                <motion.form
+                  key="signup"
+                  className="auth-form"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  transition={{ duration: 0.28 }}
+                  onSubmit={handleSignup}
+                >
+                  <div className="auth-form-header">
+                    <h2 style={{ color: theme.colors.text }}>Create your account ✨</h2>
+                    <p style={{ color: theme.colors.textLight }}>Free forever. Start your wellness journey today.</p>
+                  </div>
+
+                  {signupErrors.general && (
+                    <div className="auth-error-banner">{signupErrors.general}</div>
+                  )}
+
+                  <div className="form-group">
+                    <label style={{ color: theme.colors.textLight }}>Full Name</label>
+                    <input
+                      type="text" placeholder="Your name"
+                      value={signupForm.fullName}
+                      onChange={e => handleChange('signup', 'fullName', e.target.value)}
+                      className={`form-input ${signupErrors.fullName ? 'error' : ''}`}
+                      style={inputStyle(signupErrors.fullName)}
+                    />
+                    {signupErrors.fullName && <span className="error-message">{signupErrors.fullName}</span>}
+                  </div>
+
+                  <div className="form-group">
+                    <label style={{ color: theme.colors.textLight }}>Email Address</label>
+                    <input
+                      type="email" placeholder="you@example.com"
+                      value={signupForm.email}
+                      onChange={e => handleChange('signup', 'email', e.target.value)}
+                      className={`form-input ${signupErrors.email ? 'error' : ''}`}
+                      style={inputStyle(signupErrors.email)}
+                    />
+                    {signupErrors.email && <span className="error-message">{signupErrors.email}</span>}
+                  </div>
+
+                  <div className="form-row-2">
+                    <div className="form-group">
+                      <label style={{ color: theme.colors.textLight }}>Password</label>
+                      <input
+                        type="password" placeholder="Min 6 characters"
+                        value={signupForm.password}
+                        onChange={e => handleChange('signup', 'password', e.target.value)}
+                        className={`form-input ${signupErrors.password ? 'error' : ''}`}
+                        style={inputStyle(signupErrors.password)}
+                      />
+                      {signupErrors.password && <span className="error-message">{signupErrors.password}</span>}
+                    </div>
+
+                    <div className="form-group">
+                      <label style={{ color: theme.colors.textLight }}>Confirm Password</label>
+                      <input
+                        type="password" placeholder="Repeat password"
+                        value={signupForm.confirmPassword}
+                        onChange={e => handleChange('signup', 'confirmPassword', e.target.value)}
+                        className={`form-input ${signupErrors.confirmPassword ? 'error' : ''}`}
+                        style={inputStyle(signupErrors.confirmPassword)}
+                      />
+                      {signupErrors.confirmPassword && <span className="error-message">{signupErrors.confirmPassword}</span>}
+                    </div>
+                  </div>
+
+                  <motion.button
+                    type="submit" className="auth-button"
+                    disabled={isSubmitting}
+                    whileHover={!isSubmitting ? { scale: 1.02, y: -2 } : {}}
+                    whileTap={!isSubmitting ? { scale: 0.98 } : {}}
+                    style={{
+                      background: isSubmitting ? `${theme.colors.primary}60` : `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent})`,
+                      boxShadow: !isSubmitting ? `0 10px 30px ${theme.colors.primary}40` : 'none',
+                    }}
+                  >
+                    {isSubmitting ? '⏳ Creating account…' : '✨ Create Account'}
+                  </motion.button>
+
+                  <p className="auth-switch-text" style={{ color: theme.colors.textLight }}>
+                    Already have an account?{' '}
+                    <button type="button" className="auth-switch-btn" style={{ color: theme.colors.primary }} onClick={() => setActiveTab('login')}>
+                      Log in
+                    </button>
+                  </p>
+                </motion.form>
+              )}
+            </AnimatePresence>
+
+            {/* Success overlay */}
+            <AnimatePresence>
+              {showSuccess && (
+                <motion.div
+                  className="success-overlay"
+                  style={{ background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent})` }}
+                  initial={{ opacity: 0, scale: 0.85 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                >
+                  <motion.div
+                    className="success-check"
+                    initial={{ scale: 0, rotate: -180 }}
+                    animate={{ scale: 1, rotate: 0 }}
+                    transition={{ type: 'spring', stiffness: 500, delay: 0.1 }}
+                  >✓</motion.div>
+                  <h3>Account created!</h3>
+                  <p>Redirecting to your dashboard…</p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        </motion.div>
+      </div>
     </div>
   );
 }

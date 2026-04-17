@@ -185,6 +185,12 @@
   color: #ff6b6b;
 }
 
+/* Scrolled state — adds a frosted-glass tint so the nav stands out over content */
+.navbar--scrolled {
+  backdrop-filter: blur(24px) saturate(1.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6);
+}
+
 @media (max-width: 768px) {
   .navbar {
     padding: 1rem;

@@ -22,6 +22,7 @@ import heartSticker from '../assets/stickers/heart.png';
 import './Journal.css';
 import axios from 'axios';
 import 'react-resizable/css/styles.css'; // Add this for default resizable styles
+import AIInsightsPanel from '../components/AIInsightsPanel';
 
 const API_BASE_URL = 'http://localhost:5001';
 
@@ -91,14 +92,26 @@ const quillFormats = [
 
 // Sticker component for Canva-style editing
 function Sticker({ sticker, isActive, onSelect, onDelete, onResize, onDrag }) {
-  const imageSrc = sticker.src || (sticker.type ? stickerImageMap[sticker.type] : null);
-  if (!imageSrc) return null;
-  const width = sticker.size || sticker.width || 80;
-  const height = sticker.size || sticker.height || 80;
+  // Default stickers → use the webpack-bundled import (never prepend API_BASE_URL).
+  // Uploaded stickers → sticker.src is a full absolute URL; only prepend if it isn't.
+  let imageSrc;
+  if (sticker.type && stickerImageMap[sticker.type]) {
+    imageSrc = stickerImageMap[sticker.type];
+  } else if (sticker.src) {
+    imageSrc = sticker.src.startsWith('http')
+      ? sticker.src
+      : `${API_BASE_URL}${sticker.src}`;
+  } else {
+    // Nothing to render — skip silently
+    return null;
+  }
+
+  const width  = sticker.width  || sticker.size || 80;
+  const height = sticker.height || sticker.size || 80;
   return (
     <Rnd
       size={{ width, height }}
-      position={{ x: sticker.x, y: sticker.y }}
+      position={{ x: sticker.x ?? 50, y: sticker.y ?? 50 }}
       bounds="parent"
       enableResizing={isActive}
       onDragStop={(e, d) => onDrag(sticker.id, d.x, d.y)}
@@ -107,17 +120,21 @@ function Sticker({ sticker, isActive, onSelect, onDelete, onResize, onDrag }) {
       }}
       style={{
         zIndex: isActive ? 100 : 1,
-        outline: isActive ? '2px solid #bbb' : 'none',
+        outline: isActive ? '2px dashed #a78bfa' : 'none',
+        borderRadius: 4,
+        /* Re-enable pointer events — parent sticker-layer is pointer-events:none */
         pointerEvents: 'auto',
         position: 'absolute',
+        cursor: 'grab',
       }}
+      className="sticker-rnd"
       onMouseDown={e => { e.stopPropagation(); onSelect(sticker.id); }}
     >
       <div style={{ width: '100%', height: '100%', position: 'relative' }}>
         <img
           src={imageSrc}
           alt="sticker"
-          style={{ width: '100%', height: '100%', pointerEvents: 'none', userSelect: 'none' }}
+          style={{ width: '100%', height: '100%', pointerEvents: 'none', userSelect: 'none', display: 'block' }}
           draggable={false}
         />
         {isActive && (
@@ -149,6 +166,35 @@ function Sticker({ sticker, isActive, onSelect, onDelete, onResize, onDrag }) {
   );
 }
 
+// ── Reusable collapsible sidebar section ─────────────
+function SidebarSection({ title, isOpen, onToggle, surface, shadow, children }) {
+  return (
+    <div
+      className="sidebar-section"
+      style={{ background: surface, boxShadow: shadow }}
+    >
+      <button type="button" className="sidebar-section-header" onClick={onToggle}>
+        <span className="sidebar-section-title">{title}</span>
+        <span className="sidebar-section-icon">{isOpen ? '−' : '+'}</span>
+      </button>
+      <AnimatePresence initial={false}>
+        {isOpen && (
+          <motion.div
+            className="sidebar-section-content"
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: 'easeInOut' }}
+            style={{ overflow: 'hidden' }}
+          >
+            <div className="sidebar-section-body">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function Journal() {
   const { theme } = useTheme();
 
@@ -165,13 +211,14 @@ export default function Journal() {
   const [showEmojiBar, setShowEmojiBar] = useState(false);
   const [activeStickerId, setActiveStickerId] = useState(null);
   const [openPanels, setOpenPanels] = useState({
-    mood: true,
-    tools: true,
-    stickers: true,
+    mood: false,
+    tools: false,
+    stickers: false,
   });
   const [entries, setEntries] = useState([]);
   const [userStickers, setUserStickers] = useState([]);
   const [uploadError, setUploadError] = useState('');
+  const [showAIPanel, setShowAIPanel] = useState(false);
 
   const canvasRef = useRef(null);
   const quillRef = useRef(null);
@@ -179,6 +226,10 @@ export default function Journal() {
   useEffect(() => {
     // Fetch journals from backend with JWT
     const token = localStorage.getItem('token');
+    if (!token) {
+      console.warn('No token found. User may not be logged in.');
+      return;
+    }
     axios.get(`${API_BASE_URL}/api/journal/user`, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -211,6 +262,18 @@ export default function Journal() {
       .catch(err => {
         console.error('Failed to load journals:', err);
       });
+  }, []);
+
+  useEffect(() => {
+    axios.get(`${API_BASE_URL}/api/stickers/list`)
+      .then(res => {
+        const list = res.data.map(s => {
+          const src = s.src && s.src.startsWith('http') ? s.src : `${API_BASE_URL}${s.src}`;
+          return { id: `usr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, src };
+        });
+        setUserStickers(list);
+      })
+      .catch((err) => { console.error('Failed to load user stickers', err); });
   }, []);
 
   const saveEntry = useCallback(
@@ -249,16 +312,10 @@ export default function Journal() {
         setCurrentEntryId(res.data._id);
         setLastSavedAt(res.data.updatedAt || res.data.date || now);
         setHasChanges(false);
-        // Ensure stickers load after save
-        setStickers(res.data.stickers || []);
+        // Refresh entries list in sidebar without touching canvas stickers
         axios.get(`${API_BASE_URL}/api/journal/user`, { headers: { Authorization: `Bearer ${token}` } })
-          .then(r => {
-            setEntries(r.data);
-            if (r.data.length > 0) {
-              const latest = r.data[0];
-              setStickers(latest.stickers || []);
-            }
-          });
+          .then(r => setEntries(r.data))
+          .catch(() => {});
       } catch (err) {
         console.error('Failed to save journal:', err);
       }
@@ -268,136 +325,79 @@ export default function Journal() {
       } else {
         setIsSaving(false);
       }
-    }, [backgroundTheme, content, currentEntryId, lastSavedAt, selectedMood, stickers, title]);
+    }, [backgroundTheme, content, currentEntryId, selectedMood, stickers, title]);
 
   const handleAddSticker = (stickerDefinition) => {
-    if (!canvasRef.current) return;
+    const typeId = typeof stickerDefinition === 'string' ? stickerDefinition : stickerDefinition.id;
+    if (!typeId || !stickerImageMap[typeId]) return;
 
-    const rect = canvasRef.current.getBoundingClientRect();
+    const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const rect = canvasRef.current?.getBoundingClientRect();
+    const SIZE = 80;
+    // Place in the middle of the canvas; fall back if ref not ready
+    const cx = (rect && rect.width  > SIZE) ? Math.round(rect.width  / 2 - SIZE / 2) : 80;
+    const cy = (rect && rect.height > SIZE) ? Math.round(rect.height / 2 - SIZE / 2) : 120;
 
-    const newSticker = {
-      id: Date.now(),
-      type: stickerDefinition.id,
-      x: rect.width / 2 - 40,
-      y: rect.height / 2 - 40,
-      size: 80
-    };
-
-    setStickers((prev) => [...prev, newSticker]);
-    setActiveStickerId(newSticker.id);
+    setStickers(prev => [...prev, { id: uniqueId, type: typeId, x: cx, y: cy, width: SIZE, height: SIZE }]);
+    setActiveStickerId(uniqueId);
+    setHasChanges(true);
   };
 
+  // handleStickerSelect is an alias used by the sticker library panel
+  const handleStickerSelect = handleAddSticker;
+
   const handleAddUserSticker = (sticker) => {
-    if (!canvasRef.current) return;
-    const rect = canvasRef.current.getBoundingClientRect();
-    const baseSize = Math.min(rect.width, rect.height) * 0.2;
-    const newSticker = {
-      ...sticker,
-      id: Date.now() + Math.random(),
-      x: rect.width / 2 - baseSize / 2,
-      y: rect.height / 2 - baseSize / 2,
-      width: baseSize,
-      height: baseSize,
-      userUploaded: true,
-    };
-    setStickers((prev) => [...prev, newSticker]);
-    setActiveStickerId(newSticker.id);
+    // Normalise src — always a full absolute URL
+    const src = sticker.src && sticker.src.startsWith('http')
+      ? sticker.src
+      : `${API_BASE_URL}${sticker.src}`;
+    if (!src) return;
+
+    const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const rect = canvasRef.current?.getBoundingClientRect();
+    const SIZE = 80;
+    const cx = (rect && rect.width  > SIZE) ? Math.round(rect.width  / 2 - SIZE / 2) : 80;
+    const cy = (rect && rect.height > SIZE) ? Math.round(rect.height / 2 - SIZE / 2) : 120;
+
+    setStickers(prev => [...prev, { id: uniqueId, src, x: cx, y: cy, width: SIZE, height: SIZE }]);
+    setActiveStickerId(uniqueId);
     setHasChanges(true);
   };
 
   const handleStickerUpload = async (event) => {
     const file = event.target.files[0];
     if (!file) return;
+    // Reset input so the same file can be re-selected later
+    event.target.value = '';
+
     const formData = new FormData();
     formData.append("sticker", file);
     try {
       const res = await axios.post(
-        "http://localhost:5001/api/stickers/upload",
+        `${API_BASE_URL}/api/stickers/upload`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
-      const newSticker = {
-        id: Date.now(),
-        src: res.data.url,
-        x: 200,
-        y: 150,
-        width: 80,
-        height: 80
+      const fullUrl = res.data.url.startsWith('http')
+        ? res.data.url
+        : `${API_BASE_URL}${res.data.url}`;
+      const newUserSticker = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        src: fullUrl,
       };
-      setUserStickers(prev => [...prev, newSticker]);
+      setUserStickers(prev => [...prev, newUserSticker]);
+      handleAddUserSticker(newUserSticker);
     } catch (err) {
-      alert("Sticker upload failed.");
+      console.error('Sticker upload failed', err);
+      setUploadError('Sticker upload failed. Please try again.');
+      setTimeout(() => setUploadError(''), 4000);
     }
-  };
-
-  const handleStickerPositionChange = (stickerId, x, y) => {
-    setStickers((prev) =>
-      prev.map((s) =>
-        s.id === stickerId
-          ? {
-              ...s,
-              x,
-              y,
-            }
-          : s
-      )
-    );
-    setHasChanges(true);
-  };
-
-  const handleStickerResize = (stickerId, width, height, x, y) => {
-    setStickers((prev) =>
-      prev.map((s) =>
-        s.id === stickerId
-          ? {
-              ...s,
-              width,
-              height,
-              x,
-              y,
-            }
-          : s
-      )
-    );
-    setHasChanges(true);
-  };
-
-  const deleteSticker = (stickerId) => {
-    setStickers((prev) => prev.filter((s) => s.id !== stickerId));
-    setHasChanges(true);
-    if (activeStickerId === stickerId) {
-      setActiveStickerId(null);
-    }
-  };
-
-  const bringStickerForward = (stickerId) => {
-    setStickers((prev) => {
-      const idx = prev.findIndex((s) => s.id === stickerId);
-      if (idx === -1 || idx === prev.length - 1) return prev;
-      const next = [...prev];
-      const [item] = next.splice(idx, 1);
-      next.splice(idx + 1, 0, item);
-      return next;
-    });
-    setHasChanges(true);
-  };
-
-  const sendStickerBackward = (stickerId) => {
-    setStickers((prev) => {
-      const idx = prev.findIndex((s) => s.id === stickerId);
-      if (idx <= 0) return prev;
-      const next = [...prev];
-      const [item] = next.splice(idx, 1);
-      next.splice(idx - 1, 0, item);
-      return next;
-    });
-    setHasChanges(true);
   };
 
   const togglePanel = (panelKey) => {
     setOpenPanels((prev) => ({
       ...prev,
-      [panelKey]: !prev,
+      [panelKey]: !prev[panelKey],
     }));
   };
 
@@ -445,22 +445,6 @@ export default function Journal() {
   const handleTitleChange = (e) => {
     setTitle(e.target.value);
     setHasChanges(true);
-  };
-
-  const handleStickerSelect = (type) => {
-    if (!type || !stickerImageMap[type]) return; // Prevent invalid sticker types
-    const newSticker = {
-      id: Date.now(),
-      type,
-      x: 200,
-      y: 150,
-      size: 80
-    };
-    setStickers(prev => [...prev, newSticker]);
-  };
-
-  const handleCanvasClick = (e) => {
-    if (e.target === canvasRef.current) setActiveStickerId(null);
   };
 
   const containerVariants = {
@@ -512,8 +496,38 @@ export default function Journal() {
     setActiveStickerId(null);
   };
 
+  const handleDeleteEntry = async (entryId) => {
+    if (!window.confirm('Delete this entry? This cannot be undone.')) return;
+    const token = localStorage.getItem('token');
+    try {
+      await axios.delete(`${API_BASE_URL}/api/journal/delete/${entryId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setEntries(prev => prev.filter(e => e._id !== entryId));
+      // If we deleted the currently open entry, open the next one or blank
+      if (currentEntryId === entryId) {
+        const remaining = entries.filter(e => e._id !== entryId);
+        if (remaining.length > 0) {
+          loadEntry(remaining[0]);
+        } else {
+          handleNewEntry();
+        }
+      }
+    } catch (err) {
+      console.error('Delete failed:', err);
+      alert('Could not delete entry. Please try again.');
+    }
+  };
+
   // Sort entries by newest first
   const sortedEntries = [...entries].sort((a, b) => new Date(b.date) - new Date(a.date));
+
+  // Strip HTML tags for plain-text preview
+  const stripHtml = (html) => {
+    const div = document.createElement('div');
+    div.innerHTML = html || '';
+    return div.textContent || div.innerText || '';
+  };
 
   return (
     <div className="journal-page page-with-sidebar">
@@ -540,14 +554,75 @@ export default function Journal() {
           className="journal-layout"
           variants={itemVariants}
         >
-          {/* LEFT: Journal Canvas */}
-          <div className="journal-left">
-            <div
-              className={`journal-canvas theme-${backgroundTheme}`}
-              ref={canvasRef}
-              onMouseDown={() => setActiveStickerId(null)}
-            >
-              <div className="journal-canvas-inner" style={{ position: 'relative' }}>
+          {/* ENTRIES SIDEBAR */}
+          <div className="journal-entries" style={{ background: theme.colors.surface, boxShadow: `0 8px 32px ${theme.colors.shadow}` }}>
+            <div className="entries-sidebar-header">
+              <span style={{ color: theme.colors.text, fontWeight: 600, fontSize: '0.95rem' }}>My Entries</span>
+              <button
+                type="button"
+                className="new-entry-btn"
+                onClick={handleNewEntry}
+                style={{ background: `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent})` }}
+              >
+                + New
+              </button>
+            </div>
+            <div className="entries-sidebar-list">
+              {sortedEntries.length === 0 && (
+                <div className="entries-sidebar-empty">No entries yet. Start writing!</div>
+              )}
+              {sortedEntries.map((entry) => {
+                const moodObj = moodOptions.find(m => m.id === entry.mood);
+                const isActive = currentEntryId === entry._id;
+                return (
+                  <div
+                    key={entry._id}
+                    className={`entry-sidebar-card${isActive ? ' active' : ''}`}
+                    style={{
+                      borderLeft: `3px solid ${isActive ? theme.colors.primary : 'transparent'}`,
+                      background: isActive ? `${theme.colors.primary}18` : 'transparent',
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className="entry-sidebar-card-body"
+                      onClick={() => loadEntry(entry)}
+                    >
+                      <div className="entry-sidebar-title" style={{ color: theme.colors.text }}>
+                        {entry.title || 'Untitled'}
+                        {moodObj && <span className="entry-sidebar-mood">{moodObj.emoji}</span>}
+                      </div>
+                      <div className="entry-sidebar-date" style={{ color: theme.colors.textLight }}>
+                        {new Date(entry.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </div>
+                      <div className="entry-sidebar-preview" style={{ color: theme.colors.textLight }}>
+                        {stripHtml(entry.content).slice(0, 60)}{stripHtml(entry.content).length > 60 ? '…' : ''}
+                      </div>
+                    </button>
+                    <button
+                      type="button"
+                      className="entry-sidebar-delete"
+                      title="Delete entry"
+                      onClick={(e) => { e.stopPropagation(); handleDeleteEntry(entry._id); }}
+                      style={{ color: theme.colors.textLight }}
+                    >
+                      🗑
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* CENTER: Journal Canvas */}
+          <div className="journal-editor">
+            <div className={`journal-canvas theme-${backgroundTheme}`}>
+              <div
+                className="journal-canvas-inner"
+                ref={canvasRef}
+                style={{ position: 'relative' }}
+                onMouseDown={() => setActiveStickerId(null)}
+              >
                 <div className="journal-canvas-header">
   <input
     type="text"
@@ -596,21 +671,22 @@ export default function Journal() {
                     zIndex: 50,
                     pointerEvents: 'none',
                   }}
-                  onMouseDown={() => setActiveStickerId(null)}
                 >
-                  {stickers.map(sticker =>
-                    (sticker.type || sticker.src) && (stickerImageMap[sticker.type] || sticker.src) ? (
+                  {stickers.map(sticker => {
+                    const isValid = (sticker.type && stickerImageMap[sticker.type]) || sticker.src;
+                    if (!isValid) return null;
+                    return (
                       <Sticker
                         key={sticker.id}
                         sticker={sticker}
                         isActive={activeStickerId === sticker.id}
                         onSelect={setActiveStickerId}
-                        onDelete={id => setStickers(prev => prev.filter(s => s.id !== id))}
-                        onResize={(id, width, height, x, y) => setStickers(prev => prev.map(s => s.id === id ? { ...s, size: width, width, height, x, y } : s))}
+                        onDelete={id => { setStickers(prev => prev.filter(s => s.id !== id)); if (activeStickerId === id) setActiveStickerId(null); }}
+                        onResize={(id, width, height, x, y) => setStickers(prev => prev.map(s => s.id === id ? { ...s, width, height, x, y } : s))}
                         onDrag={(id, x, y) => setStickers(prev => prev.map(s => s.id === id ? { ...s, x, y } : s))}
                       />
-                    ) : null
-                  )}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -648,314 +724,177 @@ export default function Journal() {
                   boxShadow: `0 10px 25px ${theme.colors.shadow}`,
                 }}
               >
-                {isSaving ? 'Saving...' : 'Save Entry'}
+                {isSaving ? 'Saving…' : hasChanges ? '● Save Entry' : 'Save Entry'}
+              </motion.button>
+
+              <motion.button
+                type="button"
+                className="primary-save-btn"
+                onClick={() => setShowAIPanel(v => !v)}
+                whileHover={{ scale: 1.03, y: -1 }}
+                whileTap={{ scale: 0.96 }}
+                style={{
+                  background: showAIPanel
+                    ? `linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.primary})`
+                    : `${theme.colors.primary}22`,
+                  color: showAIPanel ? '#fff' : theme.colors.primary,
+                  boxShadow: 'none',
+                  border: `1.5px solid ${theme.colors.primary}40`,
+                }}
+              >
+                {showAIPanel ? '✕ Hide AI' : '✨ AI Insights'}
               </motion.button>
             </div>
+
+            {/* ── AI Insights Panel ─────────────────────────────── */}
+            {showAIPanel && (
+              <AIInsightsPanel
+                journalText={content}
+                journalEntryId={currentEntryId}
+              />
+            )}
           </div>
 
           {/* RIGHT: Tools Panel */}
-          <div className="journal-right">
-            <div
-              className="tools-card"
-              style={{
-                background: theme.colors.surface,
-                boxShadow: `0 10px 35px ${theme.colors.shadow}`,
-              }}
-            >
-              <button
-                type="button"
-                className="tools-card-header"
-                onClick={() => togglePanel('mood')}
-              >
-                <div>
-                  <h3 style={{ color: theme.colors.text }}>Mood Picker</h3>
-                  <p className="tools-subtitle">
-                    Tap a mood to color your page.
-                  </p>
-                </div>
-                <span className="collapse-icon">
-                  {openPanels.mood ? '−' : '+'}
-                </span>
-              </button>
+          <div className="journal-sidebar">
 
-              <AnimatePresence initial={false}>
-                {openPanels.mood && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <div className="mood-picker">
-                      {moodOptions.map((mood) => {
-                        const isActive = selectedMood?.id === mood.id;
-                        return (
-                          <button
-                            key={mood.id}
-                            type="button"
-                            className={`mood-option ${
-                              isActive ? 'active' : ''
-                            }`}
-                            onClick={() => {
-                              setSelectedMood(
-                                isActive ? null : mood
-                              );
-                              setHasChanges(true);
-                            }}
-                          >
-                            <span className="mood-icon">
-                              {mood.emoji}
-                            </span>
-                            <span className="mood-text">
-                              {mood.label}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
+            {/* ── Mood Picker ── */}
+            <SidebarSection
+              title="Mood Picker"
+              isOpen={openPanels.mood}
+              onToggle={() => togglePanel('mood')}
+              surface={theme.colors.surface}
+              shadow={`0 4px 24px ${theme.colors.shadow}`}
+            >
+              <div className="mood-picker">
+                {moodOptions.map((mood) => {
+                  const isActive = selectedMood?.id === mood.id;
+                  return (
+                    <button
+                      key={mood.id}
+                      type="button"
+                      className={`mood-option${isActive ? ' active' : ''}`}
+                      style={isActive ? { borderColor: mood.color, boxShadow: `0 4px 14px ${mood.color}55` } : {}}
+                      onClick={() => { setSelectedMood(isActive ? null : mood); setHasChanges(true); }}
+                    >
+                      <span className="mood-icon">{mood.emoji}</span>
+                      <span className="mood-text" style={{ color: theme.colors.text }}>{mood.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </SidebarSection>
+
+            {/* ── Journal Tools ── */}
+            <SidebarSection
+              title="Journal Tools"
+              isOpen={openPanels.tools}
+              onToggle={() => togglePanel('tools')}
+              surface={theme.colors.surface}
+              shadow={`0 4px 24px ${theme.colors.shadow}`}
+            >
+              <div className="journal-tools-grid">
+                <button type="button" className="journal-tool-btn"
+                  onClick={() => { const r = stickerOptions[Math.floor(Math.random() * stickerOptions.length)]; handleAddSticker(r); }}>
+                  <span className="tool-icon">✨</span>
+                  <span className="tool-label">Add Sticker</span>
+                </button>
+
+                <label className="journal-tool-btn">
+                  <span className="tool-icon">⬆️</span>
+                  <span className="tool-label">Upload</span>
+                  <input type="file" accept="image/png,image/jpg,image/jpeg,image/svg+xml"
+                    style={{ display: 'none' }} onChange={handleStickerUpload} />
+                </label>
+
+                <button type="button" className="journal-tool-btn"
+                  onClick={() => setShowEmojiBar(p => !p)}>
+                  <span className="tool-icon">😊</span>
+                  <span className="tool-label">Emoji</span>
+                </button>
+
+                <button type="button" className="journal-tool-btn"
+                  onClick={cycleBackgroundTheme}>
+                  <span className="tool-icon">🎨</span>
+                  <span className="tool-label">Theme</span>
+                </button>
+
+                <button type="button" className="journal-tool-btn"
+                  onClick={insertQuote}>
+                  <span className="tool-icon">💬</span>
+                  <span className="tool-label">Quote</span>
+                </button>
+              </div>
+
+              {uploadError && <div className="upload-error">{uploadError}</div>}
+
+              <AnimatePresence>
+                {showEmojiBar && (
+                  <motion.div className="emoji-bar"
+                    initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }}>
+                    {quickEmojis.map(emoji => (
+                      <button key={emoji} type="button" className="emoji-pill"
+                        onClick={() => insertEmojiIntoEditor(emoji)}>{emoji}</button>
+                    ))}
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
+            </SidebarSection>
 
-            <div
-              className="tools-card"
-              style={{
-                background: theme.colors.surface,
-                boxShadow: `0 10px 35px ${theme.colors.shadow}`,
-              }}
+            {/* ── Sticker Library ── */}
+            <SidebarSection
+              title="Sticker Library"
+              isOpen={openPanels.stickers}
+              onToggle={() => togglePanel('stickers')}
+              surface={theme.colors.surface}
+              shadow={`0 4px 24px ${theme.colors.shadow}`}
             >
-              <button
-                type="button"
-                className="tools-card-header"
-                onClick={() => togglePanel('tools')}
-              >
-                <div>
-                  <h3 style={{ color: theme.colors.text }}>Journal Tools</h3>
-                  <p className="tools-subtitle">
-                    Decorate your page with calming elements.
-                  </p>
-                </div>
-                <span className="collapse-icon">
-                  {openPanels.tools ? '−' : '+'}
-                </span>
-              </button>
+              {/* Default stickers */}
+              <p className="sticker-section-title">Default Stickers</p>
+              <div className="sticker-grid">
+                {stickerOptions.map(sticker => (
+                  <button key={sticker.id} type="button" className="sticker-item"
+                    title={sticker.label} onClick={() => handleStickerSelect(sticker.id)}>
+                    <img src={sticker.src} alt={sticker.label} className="sticker-thumb" />
+                  </button>
+                ))}
+              </div>
 
-              <AnimatePresence initial={false}>
-                {openPanels.tools && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
+              {/* User stickers */}
+              <p className="sticker-section-title" style={{ marginTop: '14px' }}>Your Stickers</p>
+              {userStickers.length === 0
+                ? <p className="sticker-empty">No uploads yet.</p>
+                : (
+                  <div className="sticker-grid">
+                    {userStickers.map(sticker => (
+                      <button key={sticker.id} type="button" className="sticker-item user-sticker-item"
+                        onClick={() => handleAddUserSticker(sticker)}>
+                        <img src={sticker.src} alt="sticker" className="sticker-thumb" />
+                      </button>
+                    ))}
+                  </div>
+                )
+              }
+
+              {/* Background themes */}
+              <p className="sticker-section-title" style={{ marginTop: '14px' }}>Canvas Theme</p>
+              <div className="theme-grid">
+                {backgroundThemes.map(themeOption => (
+                  <button
+                    key={themeOption.id}
+                    type="button"
+                    className={`theme-card${backgroundTheme === themeOption.id ? ' active' : ''}`}
+                    onClick={() => { setBackgroundTheme(themeOption.id); setHasChanges(true); }}
                   >
-                    <div className="journal-tools-grid">
-                      <button
-                        type="button"
-                        className="journal-tool-btn"
-                        onClick={() => {
-                          const randomSticker =
-                            stickerOptions[
-                              Math.floor(
-                                Math.random() * stickerOptions.length
-                              )
-                            ];
-                          handleAddSticker(randomSticker);
-                        }}
-                      >
-                        <span className="tool-icon">✨</span>
-                        <span className="tool-label">
-                          Add Sticker
-                        </span>
-                      </button>
+                    <span className="theme-card-swatch" data-theme={themeOption.id} />
+                    <span className="theme-card-label">{themeOption.label}</span>
+                  </button>
+                ))}
+              </div>
+            </SidebarSection>
 
-                      <label className="journal-tool-btn">
-                        <span className="tool-icon">⬆️</span>
-                        <span className="tool-label">Upload Sticker</span>
-                        <input
-                          type="file"
-                          accept="image/png,image/jpg,image/jpeg,image/svg+xml"
-                          style={{ display: 'none' }}
-                          onChange={handleStickerUpload}
-                        />
-                      </label>
-
-                      <button
-                        type="button"
-                        className="journal-tool-btn"
-                        onClick={() =>
-                          setShowEmojiBar((prev) => !prev)
-                        }
-                      >
-                        <span className="tool-icon">😊</span>
-                        <span className="tool-label">
-                          Add Emoji
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        className="journal-tool-btn"
-                        onClick={cycleBackgroundTheme}
-                      >
-                        <span className="tool-icon">🎨</span>
-                        <span className="tool-label">
-                          Change Background
-                        </span>
-                      </button>
-
-                      <button
-                        type="button"
-                        className="journal-tool-btn"
-                        onClick={insertQuote}
-                      >
-                        <span className="tool-icon">💬</span>
-                        <span className="tool-label">
-                          Add Quote
-                        </span>
-                      </button>
-                    </div>
-
-                    {uploadError && (
-                      <div className="upload-error">{uploadError}</div>
-                    )}
-
-                    <AnimatePresence>
-                      {showEmojiBar && (
-                        <motion.div
-                          className="emoji-bar"
-                          initial={{ opacity: 0, y: 10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: 10 }}
-                        >
-                          {quickEmojis.map((emoji) => (
-                            <button
-                              key={emoji}
-                              type="button"
-                              className="emoji-pill"
-                              onClick={() =>
-                                insertEmojiIntoEditor(emoji)
-                              }
-                            >
-                              {emoji}
-                            </button>
-                          ))}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-
-            <div
-              className="tools-card"
-              style={{
-                background: theme.colors.surface,
-                boxShadow: `0 10px 35px ${theme.colors.shadow}`,
-              }}
-            >
-              <button
-                type="button"
-                className="tools-card-header"
-                onClick={() => togglePanel('stickers')}
-              >
-                <div>
-                  <h3 style={{ color: theme.colors.text }}>
-                    Sticker Library
-                  </h3>
-                  <p className="tools-subtitle">
-                    Tap a sticker, then drag and resize on the page.
-                  </p>
-                </div>
-                <span className="collapse-icon">
-                  {openPanels.stickers ? '−' : '+'}
-                </span>
-              </button>
-
-              <AnimatePresence initial={false}>
-                {openPanels.stickers && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <div className="sticker-library">
-                      <div className="sticker-section">
-                        <div className="sticker-section-title">Default Stickers</div>
-                        <div className="sticker-list">
-                          {stickerOptions.map((sticker) => (
-                            <button
-                              key={sticker.id}
-                              type="button"
-                              className="sticker-pill"
-                              onClick={() => handleStickerSelect(sticker.id)}
-                            >
-                              <img
-                                src={sticker.src}
-                                alt={sticker.label}
-                                className="sticker-thumb"
-                              />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="sticker-section">
-                        <div className="sticker-section-title">User Stickers</div>
-                        <div className="sticker-list">
-                          {userStickers.length === 0 && (
-                            <div className="sticker-empty">No uploaded stickers yet.</div>
-                          )}
-                          {userStickers.map((sticker) => (
-                            <button
-                              key={sticker.id}
-                              type="button"
-                              className="sticker-pill user-sticker-pill"
-                              onClick={() => handleAddUserSticker(sticker)}
-                            >
-                              <img
-                                src={sticker.src}
-                                alt="User Sticker"
-                                className="sticker-thumb"
-                              />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="theme-card-grid">
-                      {backgroundThemes.map((themeOption) => (
-                        <button
-                          key={themeOption.id}
-                          type="button"
-                          className={`theme-card ${
-                            backgroundTheme === themeOption.id
-                              ? 'active'
-                              : ''
-                          }`}
-                          onClick={() => {
-                            setBackgroundTheme(themeOption.id);
-                            setHasChanges(true);
-                          }}
-                        >
-                          <span className="theme-card-swatch theme-card-swatch--soft-lavender" data-theme={themeOption.id} />
-                          <span className="theme-card-label">
-                            {themeOption.label}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
           </div>
         </motion.div>
-        <button className="new-entry-btn" onClick={handleNewEntry} style={{marginBottom: 16}}>
-          + New Entry
-        </button>
       </motion.div>
 
       <Footer />

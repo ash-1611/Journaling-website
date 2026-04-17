@@ -53,7 +53,57 @@ const getMoodHistory = async (req, res) => {
   }
 };
 
+// @desc    Get mood stats (weekly avg, most common, streak)
+// @route   GET /api/mood/stats
+// @access  Private
+const getMoodStats = async (req, res) => {
+  const MOOD_VALUE = { happy: 8, excited: 9, calm: 7, tired: 5, sad: 3, anxious: 4, angry: 2 };
+  try {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    const all = await Mood.find({ userId: req.user._id }).sort({ createdAt: -1 });
+    const recent = all.filter(m => new Date(m.createdAt) >= sevenDaysAgo);
+
+    // Weekly average
+    const weeklyMoodAverage = recent.length
+      ? (recent.reduce((sum, m) => sum + (MOOD_VALUE[m.mood] || 5), 0) / recent.length).toFixed(1)
+      : null;
+
+    // Most common mood (all time)
+    const freq = {};
+    all.forEach(m => { freq[m.mood] = (freq[m.mood] || 0) + 1; });
+    const mostCommonMood = Object.keys(freq).sort((a, b) => freq[b] - freq[a])[0] || null;
+
+    // Streak: consecutive days with at least one entry
+    let streak = 0;
+    const today = new Date(); today.setHours(0,0,0,0);
+    for (let i = 0; i < 365; i++) {
+      const day = new Date(today); day.setDate(today.getDate() - i);
+      const nextDay = new Date(day); nextDay.setDate(day.getDate() + 1);
+      const hasEntry = all.some(m => {
+        const d = new Date(m.createdAt);
+        return d >= day && d < nextDay;
+      });
+      if (hasEntry) streak++;
+      else if (i > 0) break; // allow today to be missing
+    }
+
+    return res.json({
+      weeklyMoodAverage,
+      mostCommonMood,
+      totalEntries: all.length,
+      weeklyEntries: recent.length,
+      moodStreak: streak,
+    });
+  } catch (error) {
+    console.error("Mood stats error:", error.message);
+    return res.status(500).json({ message: "Server error" });
+  }
+};
+
 module.exports = {
   addMood,
-  getMoodHistory
+  getMoodHistory,
+  getMoodStats,
 };

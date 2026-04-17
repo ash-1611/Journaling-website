@@ -5,33 +5,33 @@ import { useTheme } from '../context/ThemeContext';
 import './Navbar.css';
 
 export default function Navbar() {
-  const location = useLocation();
-  const navigate = useNavigate();
+  const location  = useLocation();
+  const navigate  = useNavigate();
   const { theme } = useTheme();
-  const isAuthenticated = Boolean(localStorage.getItem('isAuthenticated'));
+  const isAuthenticated = Boolean(localStorage.getItem('token'));
   const storedName = localStorage.getItem('userName') || localStorage.getItem('userEmail') || 'You';
-  const initial =
-    storedName && storedName.trim().length > 0 ? storedName.trim().charAt(0).toUpperCase() : 'U';
-  const email = localStorage.getItem('userEmail') || 'user@example.com';
+  const initial    = storedName.trim().charAt(0).toUpperCase() || 'U';
+  const email      = localStorage.getItem('userEmail') || 'user@example.com';
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [scrolled,   setScrolled]   = useState(false);
 
-  // Close menu when clicking outside
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (isMenuOpen && !event.target.closest('.nav-profile')) {
-        setIsMenuOpen(false);
-      }
+      if (isMenuOpen && !event.target.closest('.nav-profile')) setIsMenuOpen(false);
     };
-
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, [isMenuOpen]);
 
   const handleLogout = () => {
-    localStorage.removeItem('isAuthenticated');
-    localStorage.removeItem('userEmail');
-    localStorage.removeItem('userName');
+    ['token','isAuthenticated','userEmail','userName','userId'].forEach(k => localStorage.removeItem(k));
     setIsMenuOpen(false);
     navigate('/auth');
   };
@@ -43,19 +43,22 @@ export default function Navbar() {
     { path: '/music', label: 'Music' },
     { path: '/yoga', label: 'Yoga' },
     { path: '/exercise', label: 'Exercise' },
+    { path: '/ai-chat', label: '🤖 Mindi' },
     { path: '/themes', label: 'Themes' },
   ];
 
   return (
     <motion.nav
-      className="navbar"
+      className={`navbar ${scrolled ? 'navbar--scrolled' : ''}`}
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       transition={{ duration: 0.5, ease: 'easeOut' }}
       style={{
-        background: theme.colors.surface,
-        backdropFilter: 'blur(10px)',
-        WebkitBackdropFilter: 'blur(10px)',
+        background:           theme.colors.surface,
+        backdropFilter:       'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
+        boxShadow:            scrolled ? `0 4px 24px ${theme.colors.shadow}` : 'none',
+        borderBottom:         `1px solid ${scrolled ? theme.colors.primary + '20' : 'rgba(255,255,255,0.15)'}`,
       }}
     >
       <div className="navbar-container">
