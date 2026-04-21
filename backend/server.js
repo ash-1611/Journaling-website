@@ -14,37 +14,33 @@ connectDB();
 // Middleware
 app.use(express.json());
 
-// Enhanced CORS Configuration
-const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      process.env.CLIENT_URL || "http://localhost:3000",
-      "http://localhost:3000",
-      "http://127.0.0.1:3000",
-      "http://localhost:3001"
-    ];
-    
-    // Allow requests with no origin (like mobile apps or Curl requests)
-    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.warn(`[CORS] Blocked origin: ${origin}`);
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true,
-  methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-  allowedHeaders: ["Content-Type", "Authorization"],
-  optionsSuccessStatus: 200
-};
-app.use(cors(corsOptions));
+// CORS configuration
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://journaling-website-rbyx01git-aishwaryadas1611-8825s-projects.vercel.app"
+];
+
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    credentials: true
+  })
+);
 
 if (process.env.NODE_ENV !== "production") {
   app.use(morgan("dev"));
 }
 
 // Preflight requests handler
-app.options("*", cors(corsOptions));
+app.options("*", cors());
 
 // Routes
 app.get("/", (req, res) => {
