@@ -11,10 +11,10 @@ import Footer from '../components/Footer';
 import Sidebar from '../components/Sidebar';
 import './MoodTracker.css';
 import axios from 'axios';
+import API_BASE from '../config/api';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend, Filler, ArcElement);
 
-const API = 'http://localhost:5001';
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem('token')}` });
 
 const MOOD_META = {
@@ -43,8 +43,8 @@ export default function MoodTracker() {
   const fetchData = async () => {
     try {
       const [hist, stats] = await Promise.all([
-        axios.get(`${API}/api/mood/user`,  { headers: authHeaders() }),
-        axios.get(`${API}/api/mood/stats`, { headers: authHeaders() }),
+        axios.get(`${API_BASE}/api/mood/user`,  { headers: authHeaders() }),
+        axios.get(`${API_BASE}/api/mood/stats`, { headers: authHeaders() }),
       ]);
       setMoodHistory(hist.data);
       setMoodStats(stats.data);
@@ -58,7 +58,7 @@ export default function MoodTracker() {
     if (!selectedMood) return;
     setSubmitting(true);
     try {
-      await axios.post(`${API}/api/mood/add`, { mood: selectedMood, note: moodNote }, { headers: authHeaders() });
+      await axios.post(`${API_BASE}/api/mood/add`, { mood: selectedMood, note: moodNote }, { headers: authHeaders() });
       setToast('Mood logged! 🎉');
       setSelectedMood('');
       setMoodNote('');

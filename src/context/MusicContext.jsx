@@ -7,12 +7,11 @@ import React, {
   createContext, useContext, useReducer,
   useRef, useEffect, useCallback,
 } from 'react';
-
-const API = process.env.REACT_APP_API_URL || 'http://localhost:5001';
+import API_BASE from '../config/api';
 
 /* ── helpers ─────────────────────────────────────────────────────────── */
 export const streamUrl = (songId) =>
-  `${API}/api/playlists/songs/${songId}/stream`;
+  `${API_BASE}/api/playlists/songs/${songId}/stream`;
 
 export const fmtTime = (s) => {
   if (!s || isNaN(s)) return '0:00';

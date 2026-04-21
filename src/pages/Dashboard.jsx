@@ -8,8 +8,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import Sidebar from "../components/Sidebar";
 import "./Dashboard.css";
-
-const API = "http://localhost:5001";
+import API_BASE from "../config/api";
 
 const MOOD_META = {
   happy:   { emoji: "😊", label: "Happy",   color: "#FFD93D" },
@@ -53,11 +52,11 @@ export default function Dashboard() {
     const token = localStorage.getItem("token");
     if (!token) { navigate("/auth"); return; }
     Promise.allSettled([
-      axios.get(`${API}/api/profile/me`,     { headers: authHeaders() }),
-      axios.get(`${API}/api/journal/user`,   { headers: authHeaders() }),
-      axios.get(`${API}/api/mood/user`,      { headers: authHeaders() }),
-      axios.get(`${API}/api/mood/stats`,     { headers: authHeaders() }),
-      axios.get(`${API}/api/exercise/stats`, { headers: authHeaders() }),
+      axios.get(`${API_BASE}/api/profile/me`,     { headers: authHeaders() }),
+      axios.get(`${API_BASE}/api/journal/user`,   { headers: authHeaders() }),
+      axios.get(`${API_BASE}/api/mood/user`,      { headers: authHeaders() }),
+      axios.get(`${API_BASE}/api/mood/stats`,     { headers: authHeaders() }),
+      axios.get(`${API_BASE}/api/exercise/stats`, { headers: authHeaders() }),
     ]).then(([prof, jrnl, moodHist, moodSt, exSt]) => {
       if (prof.status      === "fulfilled") setProfile(prof.value.data);
       if (jrnl.status      === "fulfilled") setEntries(jrnl.value.data);
@@ -81,12 +80,12 @@ export default function Dashboard() {
     if (!todayMood) return;
     setSavingMood(true);
     try {
-      await axios.post(`${API}/api/mood/add`, { mood: todayMood, note: moodNote }, { headers: authHeaders() });
+      await axios.post(`${API_BASE}/api/mood/add`, { mood: todayMood, note: moodNote }, { headers: authHeaders() });
       setLoggedToday(true);
       setMoodSuccess(true);
       const [h, s] = await Promise.all([
-        axios.get(`${API}/api/mood/user`,  { headers: authHeaders() }),
-        axios.get(`${API}/api/mood/stats`, { headers: authHeaders() }),
+        axios.get(`${API_BASE}/api/mood/user`,  { headers: authHeaders() }),
+        axios.get(`${API_BASE}/api/mood/stats`, { headers: authHeaders() }),
       ]);
       setMoodHistory(h.data);
       setMoodStats(s.data);

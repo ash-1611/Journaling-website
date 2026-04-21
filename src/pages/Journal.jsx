@@ -23,8 +23,7 @@ import './Journal.css';
 import axios from 'axios';
 import 'react-resizable/css/styles.css'; // Add this for default resizable styles
 import AIInsightsPanel from '../components/AIInsightsPanel';
-
-const API_BASE_URL = 'http://localhost:5001';
+import API_BASE from '../config/api';
 
 const moodOptions = [
   { id: 'happy', emoji: '😊', label: 'Happy', color: '#FFD93D' },
@@ -100,7 +99,7 @@ function Sticker({ sticker, isActive, onSelect, onDelete, onResize, onDrag }) {
   } else if (sticker.src) {
     imageSrc = sticker.src.startsWith('http')
       ? sticker.src
-      : `${API_BASE_URL}${sticker.src}`;
+      : `${API_BASE}${sticker.src}`;
   } else {
     // Nothing to render — skip silently
     return null;
@@ -230,7 +229,7 @@ export default function Journal() {
       console.warn('No token found. User may not be logged in.');
       return;
     }
-    axios.get(`${API_BASE_URL}/api/journal/user`, {
+    axios.get(`${API_BASE}/api/journal/user`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
@@ -265,10 +264,10 @@ export default function Journal() {
   }, []);
 
   useEffect(() => {
-    axios.get(`${API_BASE_URL}/api/stickers/list`)
+    axios.get(`${API_BASE}/api/stickers/list`)
       .then(res => {
         const list = res.data.map(s => {
-          const src = s.src && s.src.startsWith('http') ? s.src : `${API_BASE_URL}${s.src}`;
+          const src = s.src && s.src.startsWith('http') ? s.src : `${API_BASE}${s.src}`;
           return { id: `usr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, src };
         });
         setUserStickers(list);
@@ -298,13 +297,13 @@ export default function Journal() {
         let res;
         if (currentEntryId) {
           res = await axios.put(
-            `${API_BASE_URL}/api/journal/update/${currentEntryId}`,
+            `${API_BASE}/api/journal/update/${currentEntryId}`,
             entry,
             { headers: { Authorization: `Bearer ${token}` } }
           );
         } else {
           res = await axios.post(
-            `${API_BASE_URL}/api/journal/create`,
+            `${API_BASE}/api/journal/create`,
             entry,
             { headers: { Authorization: `Bearer ${token}` } }
           );
@@ -313,7 +312,7 @@ export default function Journal() {
         setLastSavedAt(res.data.updatedAt || res.data.date || now);
         setHasChanges(false);
         // Refresh entries list in sidebar without touching canvas stickers
-        axios.get(`${API_BASE_URL}/api/journal/user`, { headers: { Authorization: `Bearer ${token}` } })
+        axios.get(`${API_BASE}/api/journal/user`, { headers: { Authorization: `Bearer ${token}` } })
           .then(r => setEntries(r.data))
           .catch(() => {});
       } catch (err) {
@@ -350,7 +349,7 @@ export default function Journal() {
     // Normalise src — always a full absolute URL
     const src = sticker.src && sticker.src.startsWith('http')
       ? sticker.src
-      : `${API_BASE_URL}${sticker.src}`;
+      : `${API_BASE}${sticker.src}`;
     if (!src) return;
 
     const uniqueId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -374,13 +373,13 @@ export default function Journal() {
     formData.append("sticker", file);
     try {
       const res = await axios.post(
-        `${API_BASE_URL}/api/stickers/upload`,
+        `${API_BASE}/api/stickers/upload`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
       const fullUrl = res.data.url.startsWith('http')
         ? res.data.url
-        : `${API_BASE_URL}${res.data.url}`;
+        : `${API_BASE}${res.data.url}`;
       const newUserSticker = {
         id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         src: fullUrl,
@@ -500,7 +499,7 @@ export default function Journal() {
     if (!window.confirm('Delete this entry? This cannot be undone.')) return;
     const token = localStorage.getItem('token');
     try {
-      await axios.delete(`${API_BASE_URL}/api/journal/delete/${entryId}`, {
+      await axios.delete(`${API_BASE}/api/journal/delete/${entryId}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setEntries(prev => prev.filter(e => e._id !== entryId));

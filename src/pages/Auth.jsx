@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
 import './Auth.css';
 import axios from 'axios';
+import API_BASE from '../config/api';
 
 const FEATURES = [
   { icon: '📝', label: 'Smart Journal',    desc: 'Write & decorate with stickers' },
@@ -18,8 +19,6 @@ export default function Auth() {
   const [activeTab,    setActiveTab]    = useState('login');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSuccess,  setShowSuccess]  = useState(false);
-
-  const API_BASE_URL = 'http://localhost:5001';
 
   const [loginForm,   setLoginForm]   = useState({ email: '', password: '' });
   const [loginErrors, setLoginErrors] = useState({});
@@ -56,7 +55,7 @@ export default function Auth() {
     if (!validateLogin()) return;
     setIsSubmitting(true);
     try {
-      const res = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+      const res = await axios.post(`${API_BASE}/api/auth/login`, {
         email: loginForm.email, password: loginForm.password,
       });
       localStorage.setItem('isAuthenticated', 'true');
@@ -76,7 +75,7 @@ export default function Auth() {
     if (!validateSignup()) return;
     setIsSubmitting(true);
     try {
-      const res = await axios.post(`${API_BASE_URL}/api/auth/register`, {
+      const res = await axios.post(`${API_BASE}/api/auth/register`, {
         name: signupForm.fullName, email: signupForm.email, password: signupForm.password,
       });
       localStorage.setItem('isAuthenticated', 'true');
@@ -384,4 +383,3 @@ export default function Auth() {
     </div>
   );
 }
-

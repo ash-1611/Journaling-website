@@ -7,8 +7,7 @@ import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import Sidebar from "../components/Sidebar";
 import "./Settings.css";
-
-const API = "http://localhost:5001";
+import API_BASE from "../config/api";
 const authHeaders = () => ({ Authorization: `Bearer ${localStorage.getItem("token")}` });
 
 const fadeUp = {
@@ -53,8 +52,8 @@ export default function Settings() {
     if (!token) { navigate("/auth"); return; }
 
     Promise.allSettled([
-      axios.get(`${API}/api/profile/me`,  { headers: authHeaders() }),
-      axios.get(`${API}/api/settings`,    { headers: authHeaders() }),
+      axios.get(`${API_BASE}/api/profile/me`,  { headers: authHeaders() }),
+      axios.get(`${API_BASE}/api/settings`,    { headers: authHeaders() }),
     ]).then(([prof, sett]) => {
       if (prof.status === "fulfilled") {
         const u = prof.value.data;
@@ -75,7 +74,7 @@ export default function Settings() {
   const handleSaveProfile = async () => {
     setSaving(true);
     try {
-      await axios.put(`${API}/api/profile/update`, { name: profile.name }, { headers: authHeaders() });
+      await axios.put(`${API_BASE}/api/profile/update`, { name: profile.name }, { headers: authHeaders() });
       localStorage.setItem('userName', profile.name);
       showToast("Profile updated ✓");
     } catch { showToast("Failed to save", "error"); }
@@ -85,7 +84,7 @@ export default function Settings() {
   const handleSavePrefs = async () => {
     setSaving(true);
     try {
-      await axios.put(`${API}/api/settings`, prefs, { headers: authHeaders() });
+      await axios.put(`${API_BASE}/api/settings`, prefs, { headers: authHeaders() });
       showToast("Preferences saved ✓");
     } catch { showToast("Failed to save", "error"); }
     setSaving(false);
@@ -96,7 +95,7 @@ export default function Settings() {
     if (pwForm.next.length < 6) { showToast("Password must be ≥ 6 characters", "error"); return; }
     setPwSaving(true);
     try {
-      await axios.put(`${API}/api/settings/change-password`,
+      await axios.put(`${API_BASE}/api/settings/change-password`,
         { currentPassword: pwForm.current, newPassword: pwForm.next },
         { headers: authHeaders() }
       );

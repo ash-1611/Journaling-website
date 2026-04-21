@@ -6,8 +6,7 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import Sidebar from '../components/Sidebar';
 import './Exercise.css';
-
-const API = 'http://localhost:5001';
+import API_BASE from '../config/api';
 
 const CATEGORY_META = {
   stretching: { label: 'Stretching',         emoji: '🧘', color: '#7FB069' },
@@ -234,8 +233,8 @@ export default function Exercise() {
 
   const refreshProgress = useCallback(async () => {
     const [progRes, statsRes] = await Promise.all([
-      axios.get(`${API}/api/exercise-progress/user`, { headers: authHeaders() }),
-      axios.get(`${API}/api/exercise/stats`,          { headers: authHeaders() }),
+      axios.get(`${API_BASE}/api/exercise-progress/user`, { headers: authHeaders() }),
+      axios.get(`${API_BASE}/api/exercise/stats`,          { headers: authHeaders() }),
     ]);
     setProgress(buildProgressMap(progRes.data));
     setStats(statsRes.data);
@@ -244,10 +243,10 @@ export default function Exercise() {
   useEffect(() => {
     (async () => {
       const results = await Promise.allSettled([
-        axios.get(`${API}/api/exercise`),
-        axios.get(`${API}/api/exercise-progress/user`, { headers: authHeaders() }),
-        axios.get(`${API}/api/exercise/stats`,          { headers: authHeaders() }),
-        axios.get(`${API}/api/exercise/recommendation`, { headers: authHeaders() }),
+        axios.get(`${API_BASE}/api/exercise`),
+        axios.get(`${API_BASE}/api/exercise-progress/user`, { headers: authHeaders() }),
+        axios.get(`${API_BASE}/api/exercise/stats`,          { headers: authHeaders() }),
+        axios.get(`${API_BASE}/api/exercise/recommendation`, { headers: authHeaders() }),
       ]);
       if (results[0].status === 'fulfilled') setExercises(results[0].value.data);
       if (results[1].status === 'fulfilled') setProgress(buildProgressMap(results[1].value.data));
@@ -259,8 +258,8 @@ export default function Exercise() {
 
   const handleStart = async (exerciseId) => {
     try {
-      await axios.post(`${API}/api/exercise-progress/start`,  { exerciseId }, { headers: authHeaders() });
-      await axios.post(`${API}/api/exercise-progress/update`, { exerciseId, progress: 10 }, { headers: authHeaders() });
+      await axios.post(`${API_BASE}/api/exercise-progress/start`,  { exerciseId }, { headers: authHeaders() });
+      await axios.post(`${API_BASE}/api/exercise-progress/update`, { exerciseId, progress: 10 }, { headers: authHeaders() });
       await refreshProgress();
       showToast('Session started! Keep going 💪');
     } catch (err) { console.error(err); }
@@ -268,7 +267,7 @@ export default function Exercise() {
 
   const handleComplete = async (exerciseId) => {
     try {
-      await axios.post(`${API}/api/exercise-progress/complete`, { exerciseId }, { headers: authHeaders() });
+      await axios.post(`${API_BASE}/api/exercise-progress/complete`, { exerciseId }, { headers: authHeaders() });
       await refreshProgress();
       showToast('Exercise completed! 🎉 Streak updated.');
     } catch (err) { console.error(err); }

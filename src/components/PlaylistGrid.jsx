@@ -8,8 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from '../context/ThemeContext';
 import { CAT_META } from '../context/MusicContext';
 import PlaylistCard from './PlaylistCard';
+import API_BASE from '../config/api';
 
-const API = process.env.REACT_APP_API_URL || 'http://localhost:5001';
 const CATEGORIES = ['All', ...Object.keys(CAT_META)];
 
 export default function PlaylistGrid() {
@@ -27,7 +27,7 @@ export default function PlaylistGrid() {
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch(`${API}/api/playlists`);
+        const res = await fetch(`${API_BASE}/api/playlists`);
         if (!res.ok) throw new Error('Could not load playlists');
         setPlaylists(await res.json());
       } catch (e) {
@@ -50,7 +50,7 @@ export default function PlaylistGrid() {
 
     setLoadingId(id);
     try {
-      const res  = await fetch(`${API}/api/playlists/${id}`);
+      const res  = await fetch(`${API_BASE}/api/playlists/${id}`);
       const data = await res.json();
       setSongsMap(prev => ({ ...prev, [id]: data.songs || [] }));
     } catch {

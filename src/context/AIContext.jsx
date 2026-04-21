@@ -1,8 +1,7 @@
 // src/context/AIContext.jsx
 import React, { createContext, useContext, useReducer, useCallback, useEffect } from 'react';
 import axios from 'axios';
-
-const API_BASE = 'http://localhost:5001';
+import API_BASE from '../config/api';
 
 const AIContext = createContext(null);
 
