@@ -17,15 +17,20 @@ app.use(express.json());
 // CORS configuration
 const allowedOrigins = [
   "http://localhost:3000",
+  "https://journaling-website.vercel.app",
   "https://journaling-website-rbyx01git-aishwaryadas1611-8825s-projects.vercel.app"
 ];
+
+const isAllowedVercelOrigin = (origin) => {
+  return /^https:\/\/journaling-website(?:-[a-z0-9-]+)?\.vercel\.app$/i.test(origin);
+};
 
 app.use(
   cors({
     origin: function (origin, callback) {
       if (!origin) return callback(null, true);
 
-      if (allowedOrigins.includes(origin)) {
+      if (allowedOrigins.includes(origin) || isAllowedVercelOrigin(origin)) {
         callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS"));
